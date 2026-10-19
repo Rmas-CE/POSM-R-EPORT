@@ -1,0 +1,531 @@
+<!doctype html><html lang="fil"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"></head><body><title>RMAS POSM Dashboard</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: sticky top bar with mode switch; TS app = single phone-width column, RMAS = summary tiles → TS table → store list */
+:root{
+  --bg:#EEF1F5; --surface:#FFFFFF; --sunk:#F6F8FA; --ink:#121A2B; --muted:#5A6476; --line:#D9DFE8;
+  --accent:#1F47C7; --accent-soft:#E4EAFB; --on-accent:#FFFFFF;
+  --ok:#17784A; --ok-bg:#E1F3E8; --ns:#0B6F86; --ns-bg:#DDF1F6; --bad:#B9400F; --bad-bg:#FCE8DB; --warn:#946200; --warn-bg:#FAF0D2;
+  --font-display:"Archivo","Arial Narrow",system-ui,sans-serif;
+  --font-body:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0E131D; --surface:#161D2A; --sunk:#111723; --ink:#E7ECF4; --muted:#97A2B5; --line:#273246;
+  --accent:#7D9BFF; --accent-soft:#1E2A4D; --on-accent:#0E131D;
+  --ok:#5BD093; --ok-bg:#16301F; --ns:#5CC8E0; --ns-bg:#123039; --bad:#FF9A6B; --bad-bg:#3A2016; --warn:#E8BC52; --warn-bg:#352A10; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0E131D; --surface:#161D2A; --sunk:#111723; --ink:#E7ECF4; --muted:#97A2B5; --line:#273246;
+  --accent:#7D9BFF; --accent-soft:#1E2A4D; --on-accent:#0E131D;
+  --ok:#5BD093; --ok-bg:#16301F; --ns:#5CC8E0; --ns-bg:#123039; --bad:#FF9A6B; --bad-bg:#3A2016; --warn:#E8BC52; --warn-bg:#352A10; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.45}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line);
+  padding-block:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.top-in{max-width:1080px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.brand{display:flex;flex-direction:column;min-width:0}
+.brand b{font-family:var(--font-display);font-weight:800;font-size:18px;letter-spacing:-.01em}
+.brand span{font-size:12px;color:var(--muted)}
+.seg{display:inline-flex;background:var(--sunk);border:1px solid var(--line);border-radius:10px;padding:3px;gap:3px}
+.seg button{border:0;background:transparent;padding:7px 12px;border-radius:7px;font-weight:600;font-size:13.5px;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--on-accent)}
+
+main{padding-block:18px 60px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1080px;margin:0 auto}
+.phone{max-width:440px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+.demo-note{font-size:12.5px;color:var(--muted);background:var(--warn-bg);border-radius:8px;padding:8px 10px}
+.demo-note b{color:var(--warn)}
+label.field{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);font-weight:600;letter-spacing:.03em;text-transform:uppercase}
+select{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:9px 10px;text-transform:none;letter-spacing:0;font-weight:500}
+
+.prog{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.prog-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.big{font-family:var(--font-display);font-weight:800;font-size:30px;line-height:1}
+.big small{font-size:15px;font-weight:600;color:var(--muted)}
+.bar{position:relative;height:10px;background:var(--sunk);border-radius:6px;border:1px solid var(--line);overflow:visible}
+.bar i{position:absolute;inset:0 auto 0 0;border-radius:6px;background:var(--accent)}
+.bar .t80{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--ink);left:80%}
+.bar .pace{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--muted);opacity:.55}
+.prog-foot{display:flex;justify-content:space-between;font-size:12.5px;color:var(--muted);gap:8px;flex-wrap:wrap}
+
+.sect{font-family:var(--font-display);font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);display:flex;justify-content:space-between;margin-top:4px}
+.list{display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.row{display:flex;align-items:center;gap:10px;padding:12px 14px;border:0;border-top:1px solid var(--line);background:transparent;text-align:left;width:100%}
+.row:first-child{border-top:0}
+.row:hover{background:var(--sunk)}
+.row .main{flex:1;min-width:0}
+.row .nm{font-weight:600;display:block}
+.row .sub{font-size:12.5px;color:var(--muted)}
+.chev{color:var(--muted);font-size:18px}
+.empty{padding:14px;color:var(--muted);font-size:13.5px}
+
+.pill{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:700;padding:3px 8px;border-radius:99px;white-space:nowrap}
+.p-ok{background:var(--ok-bg);color:var(--ok)} .p-ns{background:var(--ns-bg);color:var(--ns)} .p-bad{background:var(--bad-bg);color:var(--bad)}
+.p-warn{background:var(--warn-bg);color:var(--warn)} .p-mute{background:var(--sunk);color:var(--muted);border:1px solid var(--line)} .p-acc{background:var(--accent-soft);color:var(--accent)}
+
+.back{border:0;background:none;color:var(--accent);font-weight:600;padding:4px 0;align-self:flex-start}
+.store-h h2{font-family:var(--font-display);font-size:22px;margin:0;text-wrap:balance}
+.store-h p{margin:4px 0 0;color:var(--muted);font-size:13px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.disp{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:12px}
+.disp h3{margin:0;font-family:var(--font-display);font-size:17px;display:flex;justify-content:space-between;align-items:center}
+.cam{display:flex;align-items:center;justify-content:center;gap:8px;min-height:120px;border:1.5px dashed var(--line);border-radius:10px;background:var(--sunk);color:var(--muted);font-weight:600;cursor:pointer;position:relative;overflow:hidden;text-align:center;padding:10px}
+.cam img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.cam .retake{position:absolute;right:8px;bottom:8px;background:var(--surface);color:var(--ink);font-size:12px;padding:4px 8px;border-radius:6px;border:1px solid var(--line)}
+.cam input{position:absolute;width:1px;height:1px;opacity:0}
+.nophoto{font-size:13px;color:var(--warn);background:var(--warn-bg);border-radius:8px;padding:9px 10px}
+.choices{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.choices button{border:1.5px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 4px;font-weight:700;font-size:12.5px;line-height:1.2;min-height:52px}
+.choices button[data-v="ok"][aria-pressed="true"]{background:var(--ok-bg);border-color:var(--ok);color:var(--ok)}
+.choices button[data-v="ns"][aria-pressed="true"]{background:var(--ns-bg);border-color:var(--ns);color:var(--ns)}
+.choices button[data-v="inc"][aria-pressed="true"]{background:var(--bad-bg);border-color:var(--bad);color:var(--bad)}
+.submit{position:sticky;bottom:calc(10px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:6px;background:var(--bg);padding-top:6px}
+.btn{border:0;border-radius:12px;padding:14px;font-weight:700;font-size:16px;background:var(--accent);color:var(--on-accent)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.hint{font-size:12.5px;color:var(--muted);text-align:center}
+
+/* dashboard */
+.dash{display:flex;flex-direction:column;gap:18px}
+.dash-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.dash-head h1{font-family:var(--font-display);font-size:26px;margin:0;letter-spacing:-.01em}
+.dash-head p{margin:2px 0 0;color:var(--muted);font-size:13.5px}
+.weeks{display:inline-flex;gap:4px;flex-wrap:wrap}
+.weeks button{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 10px;font-weight:600;font-size:13px}
+.weeks button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+.weeks button:disabled{opacity:.4;cursor:not-allowed}
+.tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+@media (max-width:760px){.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.tile .k{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.tile .v{font-family:var(--font-display);font-weight:800;font-size:28px;line-height:1}
+.tile .s{font-size:12.5px;color:var(--muted)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.panel-h{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 14px;border-bottom:1px solid var(--line)}
+.panel-h h2{margin:0;font-family:var(--font-display);font-size:16px}
+.panel-h .lg{font-size:12px;color:var(--muted);display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.lg i{display:inline-block;width:2px;height:12px;vertical-align:-2px;margin-right:4px}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:760px}
+th,td{padding:10px 14px;text-align:left;border-top:1px solid var(--line);font-size:13.5px;vertical-align:middle}
+thead th{border-top:0;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:700;background:var(--sunk)}
+td.r,th.r{text-align:right}
+.tsn b{display:block}.tsn span{font-size:12px;color:var(--muted)}
+.pcell{display:flex;align-items:center;gap:10px;min-width:180px}
+.pcell .bar{flex:1}
+.pcell .num{font-family:var(--font-mono);font-size:13px;width:44px;text-align:right}
+.wk{display:flex;gap:4px}
+.wk span{width:30px;text-align:center;font-family:var(--font-mono);font-size:12.5px;padding:3px 0;border-radius:6px;background:var(--accent-soft);color:var(--accent)}
+.wk span.zero{background:var(--sunk);color:var(--muted)}
+.wk span.fut{background:transparent;color:var(--muted);border:1px dashed var(--line)}
+.mix{display:flex;gap:4px;flex-wrap:wrap}
+
+.filters{display:flex;gap:10px;flex-wrap:wrap;padding:12px 14px;border-bottom:1px solid var(--line);background:var(--sunk)}
+.filters label.field{flex:1;min-width:160px}
+.srow{border-top:1px solid var(--line)}
+.srow:first-child{border-top:0}
+.srow>button{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;width:100%;padding:11px 14px;border:0;background:transparent;text-align:left;align-items:center}
+.srow>button:hover{background:var(--sunk)}
+.srow .nm{font-weight:600}
+.srow .sub{font-size:12.5px;color:var(--muted)}
+.srow .tags{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
+.sdet{padding:4px 14px 14px;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.dcard{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--sunk);display:flex;flex-direction:column}
+.dcard .ph{aspect-ratio:4/3;max-width:100%;background:var(--line);display:flex;align-items:center;justify-content:center;font-size:11.5px;color:var(--muted);text-align:center;padding:6px}
+.dcard .ph img{width:100%;height:100%;object-fit:cover}
+.dcard .dl{padding:8px;display:flex;flex-direction:column;gap:4px;font-size:12.5px;font-weight:600}
+.more{display:block;width:100%;padding:12px;border:0;border-top:1px solid var(--line);background:var(--surface);color:var(--accent);font-weight:600}
+.callout{background:var(--accent-soft);border-radius:12px;padding:12px 14px;font-size:13.5px;color:var(--ink)}
+.callout b{color:var(--accent)}
+
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:11px 16px;border-radius:10px;font-weight:600;font-size:14px;z-index:20;max-width:calc(100% - 32px)}
+@media (prefers-reduced-motion:no-preference){.toast{animation:up .25s ease-out}@keyframes up{from{opacity:0;transform:translate(-50%,8px)}}}
+.row .tags,.srow .tags{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
+.hello{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:14px}
+.linkbtn{border:0;background:none;color:var(--accent);font-weight:600;padding:2px 0;font-size:13px;text-decoration:underline;text-underline-offset:2px}
+.errbox{background:var(--bad-bg);color:var(--ink);border-radius:12px;padding:12px 14px;font-size:13.5px}
+.errbox b{color:var(--bad)} .errbox ul{margin:6px 0;padding-left:18px}
+input{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:9px 10px;text-transform:none;letter-spacing:0;font-weight:500}
+.ctrls{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);overflow-x:auto}
+.tabs button{border:0;background:none;padding:10px 12px;font-weight:700;font-size:14px;color:var(--muted);border-bottom:2.5px solid transparent;margin-bottom:-1px;white-space:nowrap;font-family:var(--font-display)}
+.tabs button[aria-selected="true"]{color:var(--accent);border-bottom-color:var(--accent)}
+.cnt{display:inline-block;min-width:20px;padding:1px 6px;border-radius:99px;background:var(--warn-bg);color:var(--warn);font-size:11.5px;font-family:var(--font-body)}
+#tab{display:flex;flex-direction:column;gap:14px}
+.lead{margin:0;color:var(--muted);font-size:13.5px;max-width:75ch}
+.foot{margin:0;padding:10px 14px;border-top:1px solid var(--line);font-size:12.5px;color:var(--muted)}
+.muted{color:var(--muted)}
+.qgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
+@media (max-width:420px){.qgrid{grid-template-columns:1fr}}
+.qcard{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.qcard header{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.qcard header b{display:block;font-family:var(--font-display);font-size:15px}
+.qcard header span{font-size:12.5px;color:var(--muted)}
+.qrows{display:flex;flex-direction:column;gap:8px}
+.qrow{display:grid;grid-template-columns:72px minmax(0,1fr) auto;gap:10px;align-items:center}
+.qph{width:72px;height:56px;border-radius:8px;background:var(--sunk);border:1px solid var(--line);overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:10.5px;color:var(--muted);text-align:center;padding:2px}
+.qph img{width:100%;height:100%;object-fit:cover}
+.qinfo{font-size:13px;display:flex;flex-direction:column;gap:4px;align-items:flex-start;min-width:0}
+.qinfo select{font-size:12.5px;padding:5px 6px;max-width:100%}
+.bu{font-family:var(--font-mono);font-size:11px;color:var(--muted);background:var(--sunk);border:1px solid var(--line);border-radius:4px;padding:0 4px}
+.qbtn{display:flex;gap:4px}
+.qbtn button{width:38px;height:38px;border-radius:9px;border:1.5px solid var(--line);background:var(--surface);font-size:16px;font-weight:700;color:var(--muted)}
+.qbtn button[data-d="ok"][aria-pressed="true"]{background:var(--ok-bg);border-color:var(--ok);color:var(--ok)}
+.qbtn button[data-d="rej"][aria-pressed="true"]{background:var(--bad-bg);border-color:var(--bad);color:var(--bad)}
+.btn.sm{padding:9px 14px;font-size:14px;border-radius:9px}
+.matrix{min-width:420px}
+.heat{display:inline-block;min-width:48px;text-align:center;padding:3px 6px;border-radius:6px;font-family:var(--font-mono);font-size:12.5px}
+.h-ok{background:var(--ok-bg);color:var(--ok)} .h-mid{background:var(--warn-bg);color:var(--warn)} .h-bad{background:var(--bad-bg);color:var(--bad)}
+.dcard .sub{font-size:11.5px;color:var(--muted);font-weight:500}
+.row .main .tags{justify-content:flex-start;margin-top:5px}
+.picks{display:flex;flex-wrap:wrap;gap:6px}.picks button{border:1.5px solid var(--line);background:var(--surface);border-radius:99px;padding:8px 14px;font-weight:700;font-size:13.5px}.picks button[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+</style>
+<header class="top"><div class="top-in"><div class="brand"><b>RMAS POSM Dashboard</b><span>Weekly TS POSM report · verification · KPI feed</span></div></div></header>
+<main><div class="wrap" id="app"></div></main>
+<div id="toast" class="toast" role="status" hidden></div>
+<script>
+// Ilagay dito ang Web app URL ng Google Apps Script. Kapag blangko, demo mode (sample data).
+const CONFIG = { API_URL: 'https://script.google.com/macros/s/AKfycbzOXONKJwDUX2JgJCs5FCO8i-bTritwKvky_0jh_gTozRQjTVLuTC8_pz5oDSJNrxjxhg/exec' };
+// ===== Shared core: helpers, sample data, data model =====
+const DEMO = !CONFIG.API_URL;
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad = n => String(n).padStart(2, '0');
+const ymd = d => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+const NOW = new Date();
+const TODAY = ymd(NOW);
+const CUR_MONTH = TODAY.slice(0, 7);
+const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const MONTH_FULL = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+function prevMonth(m){ let [y, mo] = m.split('-').map(Number); mo--; if (!mo) { mo = 12; y--; } return y + '-' + pad(mo); }
+const daysIn = m => new Date(+m.slice(0,4), +m.slice(5,7), 0).getDate();
+const monthLabel = m => MONTH_FULL[+m.slice(5,7) - 1] + ' ' + m.slice(0,4);
+const monthShort = m => MON[+m.slice(5,7) - 1];
+const shortDate = d => d ? MON[+d.slice(5,7) - 1] + ' ' + (+d.slice(8,10)) : '';
+const weekOf = d => { const x = +d.slice(8,10); return x <= 7 ? 1 : x <= 14 ? 2 : x <= 21 ? 3 : 4; };
+const weekEnd = (m, w) => w >= 4 ? m + '-31' : m + '-' + pad(w * 7);
+const CUR_WEEK = weekOf(TODAY);
+const ST  = {ok:['Complete','p-ok'], ns:['Complete · No stock','p-ns'], inc:['Incomplete','p-bad']};
+const DST = {ok:['Complete','p-ok'], ns:['Incomplete – No Stock','p-ns'], inc:['Incomplete','p-bad']};
+const VST = {pending:['Pending check','p-warn'], ok:['Verified','p-acc'], rej:['Rejected','p-bad']};
+const REASONS = ['Malabo ang photo','Hindi tugma ang status sa photo','Kulang ang kuha (hindi kita lahat ng POSM)','Ibang store o display ang nasa photo','Mukhang lumang photo'];
+const pill = (t, c) => `<span class="pill ${c}">${esc(t)}</span>`;
+const pct = (a, b) => b ? Math.round(a / b * 100) : 0;
+const paceFor = w => Math.round(80 * w / 4);
+function bar(p, w){ return `<div class="bar" role="img" aria-label="${p}%"><i style="width:${Math.min(100,p)}%"></i>${w ? `<span class="pace" style="left:${paceFor(w)}%"></span>` : ''}<span class="t80"></span></div>`; }
+function toast(msg){ const t = document.getElementById('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(() => t.hidden = true, 3200); }
+function lsGet(k){ try { return localStorage.getItem(k); } catch(e) { return null; } }
+function lsSet(k, v){ try { localStorage.setItem(k, v); } catch(e) {} }
+
+// ----- API (Google Apps Script web app) -----
+async function apiGet(params){
+  const u = CONFIG.API_URL + '?' + new URLSearchParams(params).toString();
+  const r = await fetch(u); const j = await r.json();
+  if (!j.ok) throw new Error(j.error || 'May error sa server.'); return j;
+}
+async function apiPost(body){
+  const r = await fetch(CONFIG.API_URL, {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify(body)});
+  const j = await r.json(); if (!j.ok) throw new Error(j.error || 'May error sa server.'); return j;
+}
+
+// ----- Sample data (demo mode only) -----
+function rng(s){ return function(){ s |= 0; s = s + 0x6D2B79F5 | 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function sampleData(){
+  const R = rng(20261019), pick = a => a[Math.floor(R() * a.length)];
+  const BU = {'Ref':'HA','Washer':'HA','Microwave':'HA','Aircon':'AC','TV / AV':'AV'};
+  const DISP = ['Ref','Washer','TV / AV','Aircon','Microwave'];
+  const CHAINS = ['SM Appliance Center','Abenson',"Anson's",'Western Appliances','Automatic Centre','Robinsons Appliances','Emcor'];
+  const TS = [
+    {name:'Ramon Villanueva',region:'Cavite North',p:['Bacoor','Imus','Kawit','Dasmariñas','Molino'],n:22,rate:.74},
+    {name:'Joy Mercado',region:'Cavite South',p:['Tagaytay','Silang','GMA','Gen. Trias','Trece Martires'],n:18,rate:.47},
+    {name:'Paolo Reyes',region:'Laguna',p:['Sta. Rosa','Calamba','Biñan','San Pedro','Los Baños'],n:24,rate:.82},
+    {name:'Liza Fernandez',region:'Batangas',p:['Lipa','Batangas City','Tanauan','Sto. Tomas'],n:16,rate:.36},
+    {name:'Mark Domingo',region:'Rizal',p:['Antipolo','Cainta','Taytay','Binangonan'],n:20,rate:.63},
+    {name:'Grace Aquino',region:'Quezon',p:['Lucena','Tayabas','Sariaya','Candelaria'],n:15,rate:.56}
+  ];
+  const stores = [], used = new Set(), reports = [];
+  let rid = 0, row = 0;
+  const pm = prevMonth(CUR_MONTH), today = +TODAY.slice(8,10);
+  const st = () => { const x = R(); return x < .63 ? 'ok' : x < .78 ? 'ns' : 'inc'; };
+  TS.forEach((t, ti) => {
+    for (let i = 0; i < t.n; i++) {
+      let nm, k = 0; do { nm = pick(CHAINS) + ' ' + pick(t.p) + (k > 2 ? ' ' + k : ''); k++; } while (used.has(nm)); used.add(nm);
+      const ds = DISP.filter((d, j) => j < 2 ? R() < .92 : R() < .45); if (!ds.length) ds.push('Ref');
+      stores.push({code:'S' + (ti + 1) + pad(i + 1), name:nm, ts:t.name, region:t.region, displays: i === t.n - 1 ? [] : ds, noPhoto:R() < .08});
+    }
+  });
+  stores.forEach(s => {
+    if (!s.displays.length) return;
+    const t = TS.find(x => x.name === s.ts);
+    const add = (date, v, reason) => { rid++; s.displays.forEach(d => reports.push({row:'r' + (++row), rid:'R' + rid, date, month:date.slice(0,7), ts:s.ts, store:s.code, display:d, status:st(), photo:'', v, reason:reason || ''})); };
+    const missedLast = R() > .86;
+    if (!missedLast) add(pm + '-' + pad(1 + Math.floor(R() * daysIn(pm))), 'ok');
+    if (R() < Math.min(.97, t.rate + (missedLast ? .2 : 0))) {
+      const day = 1 + Math.floor(R() * today), date = CUR_MONTH + '-' + pad(day);
+      let v = 'pending', reason = '';
+      if (day <= today - 3) { if (R() < .08) { v = 'rej'; reason = pick(REASONS); } else v = 'ok'; }
+      add(date, v, reason);
+    }
+  });
+  return {ts: TS.map(t => ({name:t.name, region:t.region})), stores, bu:BU, displayTypes:DISP, reports, lastVerified:[]};
+}
+
+// ----- Data model -----
+// Rules:
+//  • A store counts as "reported" in a month if it has a submission that was not rejected.
+//  • If the latest submission of the month has a rejected display, the TS must redo the store.
+//  • Official status of a display = its latest VERIFIED report (any month). Pending reports do not count yet.
+function makeModel(D){
+  const subs = {};   // store -> [{rid,date,month,rows,rej,pend}]
+  D.reports.forEach(r => {
+    const list = subs[r.store] = subs[r.store] || [];
+    let g = list.find(x => x.rid === r.rid);
+    if (!g) { g = {rid:r.rid, date:r.date, month:r.month, ts:r.ts, store:r.store, rows:[], rej:false, pend:false}; list.push(g); }
+    g.rows.push(r); if (r.v === 'rej') g.rej = true; if (r.v === 'pending') g.pend = true;
+  });
+  Object.values(subs).forEach(l => l.sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : (a.rid < b.rid ? -1 : 1)));
+  const lv = {}; (D.lastVerified || []).forEach(x => lv[x.store + '|' + x.display] = x);
+  const buOf = d => D.bu[d] || 'Other';
+  const M = {
+    buOf,
+    bus: [...new Set(Object.values(D.bu).concat(D.stores.flatMap(s => s.displays.map(buOf))))].sort(),
+    subsOf: (code, m, asOf) => (subs[code] || []).filter(g => (!m || g.month === m) && (!asOf || g.date <= asOf)),
+    allSubs: (m, asOf) => Object.values(subs).flat().filter(g => g.month === m && (!asOf || g.date <= asOf)),
+    reportedIn(code, m, asOf){ return M.subsOf(code, m, asOf).some(g => !g.rej); },
+    latestSub(code, m, asOf){ const l = M.subsOf(code, m, asOf); return l[l.length - 1] || null; },
+    needsRedo(code, m, asOf){ const g = M.latestSub(code, m, asOf); return !!(g && g.rej); },
+    displayStatus(code, d, asOf){
+      let best = null;
+      (subs[code] || []).forEach(g => { if (asOf && g.date > asOf) return; g.rows.forEach(r => { if (r.display === d && r.v === 'ok' && (!best || r.date >= best.date)) best = r; }); });
+      if (!best) { const x = lv[code + '|' + d]; if (x && (!asOf || x.date <= asOf)) best = x; }
+      return best;
+    },
+    storeStatus(s, asOf, bu){
+      const ds = s.displays.filter(d => !bu || buOf(d) === bu); if (!ds.length) return null;
+      const ks = [], dates = [];
+      ds.forEach(d => { const b = M.displayStatus(s.code, d, asOf); if (b) { ks.push(b.status); dates.push(b.date); } });
+      if (!ks.length) return null;
+      return {k: ks.includes('inc') ? 'inc' : ks.includes('ns') ? 'ns' : 'ok', date: dates.sort().pop(), partial: ks.length < ds.length};
+    }
+  };
+  return M;
+}
+function storeSummary(k){ return k ? ST[k] : null; }
+function subStatus(g){ const ks = g.rows.map(r => r.status); return ks.includes('inc') ? 'inc' : ks.includes('ns') ? 'ns' : 'ok'; }
+
+// ===== RMAS dashboard =====
+const S = {D:null, M:null, month:CUR_MONTH, week:CUR_WEEK, tab: lsGet('rmasposm-tab') || 'verify', fTs:'all', fBu:'all', fSt:'all', open:null, limit:25, qLimit:6,
+  key: lsGet('rmasposm-key') || '', by: lsGet('rmasposm-by') || '', err:'', decisions:{}, busy:false};
+const app = document.getElementById('app');
+const TABS = [['verify','Para i-verify'],['ts','Per TS'],['bu','Per BU'],['stores','Stores'],['kpi','KPI feed']];
+
+async function boot(){
+  if (DEMO) { S.D = sampleData(); S.M = makeModel(S.D); S.by = S.by || 'RMAS (demo)'; return render(); }
+  if (!S.key || !S.by) return renderLogin();
+  app.innerHTML = '<div class="empty">Kinukuha ang data…</div>';
+  try { await load(); } catch(e) { S.err = e.message; }
+  render();
+}
+async function load(){ const j = await apiGet({action:'data', key:S.key, month:S.month}); S.D = j; S.M = makeModel(j); }
+
+function renderLogin(){
+  app.innerHTML = `<div class="phone"><div class="store-h"><h2>RMAS access</h2><p>Ilagay ang pangalan mo at ang admin key mula sa Google Sheet setup. Naka-save ito sa browser na ito.</p></div>
+    <label class="field">Pangalan mo<input id="by" value="${esc(S.by)}" autocomplete="name"></label>
+    <label class="field">Admin key<input id="key" value="${esc(S.key)}" autocomplete="off"></label>
+    ${S.err ? `<div class="errbox">${esc(S.err)}</div>` : ''}
+    <button class="btn" id="go">Buksan ang dashboard</button></div>`;
+  document.getElementById('go').onclick = () => {
+    S.by = document.getElementById('by').value.trim(); S.key = document.getElementById('key').value.trim();
+    if (!S.by || !S.key) { S.err = 'Kailangan ang pangalan at admin key.'; return renderLogin(); }
+    lsSet('rmasposm-by', S.by); lsSet('rmasposm-key', S.key); S.err = ''; boot();
+  };
+}
+
+const asOfDate = () => { const e = weekEnd(S.month, S.week); return S.month === CUR_MONTH && e > TODAY ? TODAY : e; };
+const maxWeek = () => S.month === CUR_MONTH ? CUR_WEEK : 4;
+const paceWeek = () => S.week;
+
+function tsStats(name, asOf){
+  const M = S.M, m = S.month, pm = prevMonth(m), pmEnd = weekEnd(pm, 4);
+  const ss = S.D.stores.filter(s => s.ts === name);
+  let rep = 0, ok = 0, ns = 0, inc = 0, none = 0, carryT = 0, carryD = 0, pend = 0, rej = 0;
+  const hasPrev = M.allSubs(pm).length > 0;
+  ss.forEach(s => {
+    const r = M.reportedIn(s.code, m, asOf); if (r) rep++;
+    if (hasPrev && !M.reportedIn(s.code, pm, pmEnd)) { carryT++; if (r) carryD++; }
+    const st = M.storeStatus(s, asOf); if (!st) none++; else if (st.k === 'ok') ok++; else if (st.k === 'ns') ns++; else inc++;
+    M.subsOf(s.code, m, asOf).forEach(g => { if (g.pend) pend++; if (g.rej) rej++; });
+  });
+  const weekly = [1,2,3,4].map(w => new Set(M.allSubs(m, asOf).filter(g => g.ts === name && !g.rej && weekOf(g.date) === w).map(g => g.store)).size);
+  return {name, region: (ss[0] || {}).region || '', n:ss.length, rep, p:pct(rep, ss.length), ok, ns, inc, none, verified: ok + ns + inc, cp: pct(ok + ns, ok + ns + inc), carryT, carryD, pend, rej, weekly};
+}
+const tsNames = () => [...new Set(S.D.stores.map(s => s.ts))].sort();
+function tsPill(p, w){ if (p >= 80) return pill('Met 80%','p-ok'); if (p >= paceFor(w)) return pill('On track','p-acc'); return pill('Behind','p-bad'); }
+
+function render(){
+  if (S.err && !S.D) { app.innerHTML = `<div class="errbox"><b>Hindi ma-load ang data.</b><br>${esc(S.err)}<br><br><button class="btn" id="retry">Subukan ulit</button> <button class="linkbtn" id="relog">Palitan ang admin key</button></div>`;
+    document.getElementById('retry').onclick = () => { S.err = ''; boot(); }; document.getElementById('relog').onclick = () => { S.err = ''; S.key = ''; renderLogin(); }; return; }
+  const asOf = asOfDate(), all = tsNames().map(n => tsStats(n, asOf));
+  const tot = all.reduce((a, x) => a + x.n, 0), rep = all.reduce((a, x) => a + x.rep, 0);
+  const okc = all.reduce((a, x) => a + x.ok + x.ns, 0), ver = all.reduce((a, x) => a + x.verified, 0);
+  const cT = all.reduce((a, x) => a + x.carryT, 0), cD = all.reduce((a, x) => a + x.carryD, 0);
+  const queue = S.M.allSubs(S.month).filter(g => g.pend);
+  const months = [CUR_MONTH, prevMonth(CUR_MONTH)];
+  app.innerHTML = `<div class="dash">
+    <div class="dash-head"><div><h1>Weekly POSM Status</h1><p>${monthLabel(S.month)} · ${all.length} Trade Supervisors · ${tot} stores · target 80% ng stores bawat TS${DEMO ? ' · <b>Demo mode (sample data)</b>' : ` · RMAS: ${esc(S.by)} <button class="linkbtn" id="logout">palitan</button>`}</p></div>
+      <div class="ctrls">
+        <label class="field">Buwan<select id="month">${months.map(m => `<option value="${m}"${m === S.month ? ' selected' : ''}>${monthLabel(m)}</option>`).join('')}</select></label>
+        <div class="weeks" role="group" aria-label="Hanggang anong week">${[1,2,3,4].map(k => `<button data-w="${k}" aria-pressed="${k === S.week}" ${k > maxWeek() ? 'disabled' : ''}>Wk ${k}</button>`).join('')}</div>
+      </div></div>
+    <div class="tiles">
+      <div class="tile"><span class="k">Stores na-report</span><span class="v num">${pct(rep, tot)}%</span><span class="s num">${rep} of ${tot} stores</span></div>
+      <div class="tile"><span class="k">Complete POSM (verified)</span><span class="v num">${pct(okc, ver)}%</span><span class="s num">${okc} of ${ver} verified stores</span></div>
+      <div class="tile"><span class="k">Para i-verify</span><span class="v num">${queue.length}</span><span class="s">submissions na pending</span></div>
+      <div class="tile"><span class="k">Carryover cleared</span><span class="v num">${cD} / ${cT}</span><span class="s">hindi nabisita noong ${monthShort(prevMonth(S.month))}</span></div>
+    </div>
+    <div class="tabs" role="tablist">${TABS.map(([k, l]) => `<button role="tab" data-tab="${k}" aria-selected="${S.tab === k}">${l}${k === 'verify' && queue.length ? ` <span class="cnt">${queue.length}</span>` : ''}</button>`).join('')}</div>
+    <div id="tab"></div></div>`;
+  const tab = document.getElementById('tab');
+  ({verify:renderVerify, ts:renderTs, bu:renderBu, stores:renderStores, kpi:renderKpi})[S.tab](tab, asOf, all, queue);
+  document.getElementById('month').onchange = async e => { S.month = e.target.value; S.week = maxWeek(); if (!DEMO) { try { await load(); } catch(err) { toast(err.message); } } render(); };
+  app.querySelectorAll('[data-w]').forEach(b => b.onclick = () => { S.week = +b.dataset.w; render(); });
+  app.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { S.tab = b.dataset.tab; lsSet('rmasposm-tab', S.tab); S.open = null; render(); });
+  const lo = document.getElementById('logout'); if (lo) lo.onclick = () => { S.key = ''; S.D = null; lsSet('rmasposm-key', ''); renderLogin(); };
+}
+
+// ----- Verify queue -----
+function renderVerify(el, asOf, all, queue){
+  const q = queue.slice().sort((a, b) => a.date < b.date ? -1 : 1);
+  const storeBy = Object.fromEntries(S.D.stores.map(s => [s.code, s]));
+  el.innerHTML = `<p class="lead">Tingnan ang photo at status ng TS. Naka-✓ lahat bilang default. Pindutin ang ✗ sa display na mali, pumili ng dahilan, tapos <b>I-save</b>. Ang na-reject na store ay babalik sa listahan ng TS bilang "Ulitin".</p>
+    ${q.length ? `<div class="qgrid">${q.slice(0, S.qLimit).map(g => {
+      const s = storeBy[g.store] || {name:g.store, displays:[]};
+      return `<article class="qcard" data-rid="${esc(g.rid)}">
+        <header><div><b>${esc(s.name)}</b><span>${esc(g.ts)} · ${shortDate(g.date)}${s.noPhoto ? ' · No-Photo store' : ''}</span></div>${pill(ST[subStatus(g)][0], ST[subStatus(g)][1])}</header>
+        <div class="qrows">${g.rows.filter(r => r.v === 'pending').map(r => { const dec = S.decisions[r.row] || {d:'ok'}; return `<div class="qrow">
+          <div class="qph">${r.photo ? `<img src="${esc(r.photo)}" alt="${esc(r.display)} display" loading="lazy">` : `<span>${s.noPhoto ? 'No-Photo' : 'Sample · walang photo'}</span>`}</div>
+          <div class="qinfo"><b>${esc(r.display)}</b> <span class="bu">${esc(S.M.buOf(r.display))}</span><br>${pill(DST[r.status][0], DST[r.status][1])}
+            ${dec.d === 'rej' ? `<select data-reason="${esc(r.row)}" aria-label="Dahilan">${REASONS.map(x => `<option${x === dec.reason ? ' selected' : ''}>${esc(x)}</option>`).join('')}</select>` : ''}</div>
+          <div class="qbtn" role="group" aria-label="Desisyon"><button data-row="${esc(r.row)}" data-d="ok" aria-pressed="${dec.d === 'ok'}" title="Verify">✓</button><button data-row="${esc(r.row)}" data-d="rej" aria-pressed="${dec.d === 'rej'}" title="Reject">✗</button></div>
+        </div>`; }).join('')}</div>
+        <button class="btn sm" data-save="${esc(g.rid)}" ${S.busy ? 'disabled' : ''}>I-save</button>
+      </article>`; }).join('')}</div>
+      ${q.length > S.qLimit ? `<button class="more" id="qmore">Ipakita pa (${q.length - S.qLimit} natitira)</button>` : ''}` : '<div class="panel"><div class="empty">Walang pending na i-verify ngayong buwan.</div></div>'}`;
+  el.querySelectorAll('.qbtn button').forEach(b => b.onclick = () => { const cur = S.decisions[b.dataset.row] || {}; S.decisions[b.dataset.row] = {d:b.dataset.d, reason: b.dataset.d === 'rej' ? (cur.reason || REASONS[0]) : ''}; render(); });
+  el.querySelectorAll('[data-reason]').forEach(sel => sel.onchange = () => { S.decisions[sel.dataset.reason].reason = sel.value; });
+  el.querySelectorAll('[data-save]').forEach(b => b.onclick = () => saveVerify(b.dataset.save, queue));
+  const m = document.getElementById('qmore'); if (m) m.onclick = () => { S.qLimit += 6; render(); };
+}
+async function saveVerify(rid, queue){
+  const g = queue.find(x => x.rid === rid); if (!g) return;
+  const items = g.rows.filter(r => r.v === 'pending').map(r => { const d = S.decisions[r.row] || {d:'ok'}; return {row:r.row, decision:d.d, reason:d.reason || ''}; });
+  const nRej = items.filter(i => i.decision === 'rej').length;
+  if (DEMO) {
+    items.forEach(i => { const r = g.rows.find(x => x.row === i.row); r.v = i.decision; r.reason = i.reason; delete S.decisions[i.row]; });
+    S.M = makeModel(S.D); render(); toast(nRej ? `Na-save. ${nRej} display ang na-reject; babalik ito sa TS.` : 'Na-verify ang store.'); return;
+  }
+  S.busy = true; render();
+  try { await apiPost({action:'verify', key:S.key, by:S.by, items}); items.forEach(i => delete S.decisions[i.row]); await load(); toast(nRej ? `Na-save. ${nRej} display ang na-reject; babalik ito sa TS.` : 'Na-verify ang store.'); }
+  catch(e) { toast('Hindi na-save: ' + e.message); }
+  S.busy = false; render();
+}
+
+// ----- Per TS -----
+function renderTs(el, asOf, all){
+  const w = paceWeek();
+  el.innerHTML = `<section class="panel">
+    <div class="panel-h"><h2>Per Trade Supervisor</h2><div class="lg"><span><i style="background:var(--ink)"></i>80% target</span><span><i style="background:var(--muted);opacity:.6"></i>pace sa Week ${w}</span></div></div>
+    <div class="scroll"><table>
+      <thead><tr><th>Trade Supervisor</th><th>Stores na-report</th><th class="r">Stores</th><th>Per week</th><th>Verified status ng stores</th><th class="r">Complete %</th><th class="r">Carryover</th><th class="r">Pending</th><th>Pace</th></tr></thead>
+      <tbody>${all.slice().sort((a, b) => b.p - a.p).map(x => `<tr>
+        <td class="tsn"><b>${esc(x.name)}</b><span>${esc(x.region)}</span></td>
+        <td><div class="pcell">${bar(x.p, w)}<span class="num">${x.p}%</span></div></td>
+        <td class="r num">${x.rep}/${x.n}</td>
+        <td><div class="wk">${x.weekly.map((c, i) => `<span class="${i + 1 > w ? 'fut' : c ? '' : 'zero'}" title="Week ${i + 1}">${i + 1 > w ? '–' : c}</span>`).join('')}</div></td>
+        <td><div class="mix">${pill(x.ok + ' OK','p-ok')}${pill(x.ns + ' No stock','p-ns')}${pill(x.inc + ' Inc','p-bad')}${x.none ? pill(x.none + ' wala pa','p-mute') : ''}</div></td>
+        <td class="r num"><b>${x.verified ? x.cp + '%' : '—'}</b></td>
+        <td class="r num">${x.carryT ? `${x.carryD}/${x.carryT}` : '—'}</td>
+        <td class="r num">${x.pend || '—'}</td>
+        <td>${tsPill(x.p, w)}</td></tr>`).join('')}</tbody></table></div>
+    <p class="foot">Ang Complete % ay galing sa huling <b>verified</b> na status ng bawat store (Complete at No stock ay parehong bilang complete). Kapag hindi nabisita ang store ngayong buwan, ang huling verified status niya ang ginagamit.</p>
+  </section>`;
+}
+
+// ----- Per BU -----
+function renderBu(el, asOf){
+  const M = S.M, bus = M.bus, names = tsNames();
+  const count = (stores, bu) => { const c = {ok:0, ns:0, inc:0, none:0}; stores.forEach(s => s.displays.forEach(d => { if (M.buOf(d) !== bu) return; const b = M.displayStatus(s.code, d, asOf); c[b ? b.status : 'none']++; })); c.n = c.ok + c.ns + c.inc + c.none; c.cp = pct(c.ok + c.ns, c.ok + c.ns + c.inc); return c; };
+  const rows = bus.map(bu => ({bu, ...count(S.D.stores, bu)})).filter(r => r.n);
+  const dispList = bu => [...new Set(S.D.stores.flatMap(s => s.displays).filter(d => M.buOf(d) === bu))].join(', ');
+  const heat = p => p >= 85 ? 'h-ok' : p >= 70 ? 'h-mid' : 'h-bad';
+  el.innerHTML = `<section class="panel"><div class="panel-h"><h2>Per BU · lahat ng stores</h2><span class="lg">bilang ng displays</span></div>
+    <div class="scroll"><table><thead><tr><th>BU</th><th>Displays</th><th class="r">Complete</th><th class="r">No stock</th><th class="r">Incomplete</th><th class="r">Wala pang verified</th><th>Complete %</th></tr></thead>
+    <tbody>${rows.map(r => `<tr><td><b>${esc(r.bu)}</b></td><td class="muted">${esc(dispList(r.bu))}</td><td class="r num">${r.ok}</td><td class="r num">${r.ns}</td><td class="r num">${r.inc}</td><td class="r num">${r.none}</td><td><div class="pcell">${bar(r.cp)}<span class="num">${r.cp}%</span></div></td></tr>`).join('')}</tbody></table></div></section>
+    <section class="panel"><div class="panel-h"><h2>Complete % · TS × BU</h2><span class="lg">verified displays lang</span></div>
+    <div class="scroll"><table class="matrix"><thead><tr><th>Trade Supervisor</th>${rows.map(r => `<th class="r">${esc(r.bu)}</th>`).join('')}</tr></thead>
+    <tbody>${names.map(n => { const ss = S.D.stores.filter(s => s.ts === n); return `<tr><td class="tsn"><b>${esc(n)}</b></td>${rows.map(r => { const c = count(ss, r.bu); const v = c.ok + c.ns + c.inc; return `<td class="r num">${v ? `<span class="heat ${heat(c.cp)}">${c.cp}%</span>` : '<span class="muted">—</span>'}</td>`; }).join('')}</tr>`; }).join('')}</tbody></table></div>
+    <p class="foot">Ang BU ng bawat display ay galing sa Displays tab ng Google Sheet (Ref, Washer, Microwave → HA · TV / AV → AV · Aircon → AC, pareho sa KPI Grading).</p></section>`;
+}
+
+// ----- Stores -----
+function renderStores(el, asOf){
+  const M = S.M, bu = S.fBu === 'all' ? null : S.fBu;
+  let list = S.D.stores.map(s => ({s, st:M.storeStatus(s, asOf, bu), rep:M.reportedIn(s.code, S.month, asOf), redo:M.needsRedo(s.code, S.month, asOf), g:M.latestSub(s.code, S.month, asOf)}));
+  if (bu) list = list.filter(x => x.s.displays.some(d => M.buOf(d) === bu));
+  if (S.fTs !== 'all') list = list.filter(x => x.s.ts === S.fTs);
+  const f = S.fSt;
+  if (f === 'none') list = list.filter(x => !x.rep);
+  else if (f === 'carry') list = list.filter(x => !x.rep && !M.reportedIn(x.s.code, prevMonth(S.month), weekEnd(prevMonth(S.month), 4)));
+  else if (f === 'redo') list = list.filter(x => x.redo);
+  else if (f === 'pending') list = list.filter(x => x.g && x.g.pend);
+  else if (f === 'nophoto') list = list.filter(x => x.s.noPhoto);
+  else if (f === 'noverified') list = list.filter(x => !x.st);
+  else if (f !== 'all') list = list.filter(x => x.st && x.st.k === f);
+  list.sort((a, b) => (b.g ? b.g.date : '') < (a.g ? a.g.date : '') ? -1 : 1);
+  const shown = list.slice(0, S.limit);
+  const opt = (v, l, cur) => `<option value="${v}"${cur === v ? ' selected' : ''}>${esc(l)}</option>`;
+  el.innerHTML = `<section class="panel">
+    <div class="panel-h"><h2>Stores</h2><span class="lg num">${list.length} store${list.length === 1 ? '' : 's'}</span></div>
+    <div class="filters">
+      <label class="field">Trade Supervisor<select id="fts">${opt('all','Lahat',S.fTs)}${tsNames().map(n => opt(n, n, S.fTs)).join('')}</select></label>
+      <label class="field">BU<select id="fbu">${opt('all','Lahat',S.fBu)}${M.bus.map(b => opt(b, b, S.fBu)).join('')}</select></label>
+      <label class="field">Status<select id="fst">${[['all','Lahat'],['ok','Complete (verified)'],['ns','Complete · No stock'],['inc','Incomplete'],['noverified','Wala pang verified'],['pending','May pending na i-verify'],['redo','Na-reject (ulitin)'],['none','Hindi pa nare-report ngayong buwan'],['carry','Carryover na pending'],['nophoto','No-Photo stores']].map(([v, l]) => opt(v, l, f)).join('')}</select></label>
+    </div>
+    <div>${shown.length ? shown.map(({s, st, rep, redo, g}) => `<div class="srow"><button data-open="${esc(s.code)}" aria-expanded="${S.open === s.code}">
+        <span><span class="nm">${esc(s.name)}</span><br><span class="sub">${esc(s.ts)} · ${g ? 'huling report ' + shortDate(g.date) : 'wala pang report ngayong buwan'}${s.displays.length ? '' : ' · wala pang displays (pipiliin sa unang report)'}${st ? ' · verified status as of ' + shortDate(st.date) : ''}</span></span>
+        <span class="tags">${redo ? pill('Ulitin','p-bad') : g && g.pend ? pill('Pending check','p-warn') : ''}${s.noPhoto ? pill('No-Photo','p-warn') : ''}${st ? pill(ST[st.k][0], ST[st.k][1]) : pill('Wala pang verified','p-mute')}</span></button>
+        ${S.open === s.code ? `<div class="sdet">${s.displays.filter(d => !bu || M.buOf(d) === bu).map(d => { const b = M.displayStatus(s.code, d, asOf); return `<div class="dcard"><div class="ph">${b && b.photo ? `<img src="${esc(b.photo)}" alt="${esc(d)} display" loading="lazy">` : esc(b ? (s.noPhoto ? 'No-Photo store' : 'Sample · walang photo') : 'Wala pang verified')}</div><div class="dl"><span>${esc(d)} <span class="bu">${esc(M.buOf(d))}</span></span>${b ? pill(DST[b.status][0], DST[b.status][1]) + `<span class="sub">${shortDate(b.date)}</span>` : ''}</div></div>`; }).join('')}</div>` : ''}
+      </div>`).join('') : '<div class="empty">Walang store sa filter na ito.</div>'}</div>
+    ${list.length > S.limit ? `<button class="more" id="more">Ipakita pa (${list.length - S.limit} natitira)</button>` : ''}
+  </section>`;
+  document.getElementById('fts').onchange = e => { S.fTs = e.target.value; S.limit = 25; render(); };
+  document.getElementById('fbu').onchange = e => { S.fBu = e.target.value; S.limit = 25; render(); };
+  document.getElementById('fst').onchange = e => { S.fSt = e.target.value; S.limit = 25; render(); };
+  el.querySelectorAll('[data-open]').forEach(b => b.onclick = () => { S.open = S.open === b.dataset.open ? null : b.dataset.open; render(); });
+  const m = document.getElementById('more'); if (m) m.onclick = () => { S.limit += 25; render(); };
+}
+
+// ----- KPI feed -----
+function renderKpi(el, asOf, all){
+  const head = ['Month','Region','TS','Total Stores','Reported Stores','Coverage %','Met 80%','Verified Stores','Complete Stores','Incomplete Stores','Complete %','Carryover Stores','Carryover Cleared'];
+  const rows = all.map(x => [S.month, x.region, x.name, x.n, x.rep, x.p, x.p >= 80 ? 'Yes' : 'No', x.verified, x.ok + x.ns, x.inc, x.verified ? x.cp : '', x.carryT, x.carryD]);
+  el.innerHTML = `<section class="panel"><div class="panel-h"><h2>KPI feed · ${monthLabel(S.month)} (as of ${shortDate(asOf)})</h2><button class="btn sm" id="copy">Kopyahin bilang table</button></div>
+    <div class="scroll"><table><thead><tr>${head.map((h, i) => `<th${i > 2 ? ' class="r"' : ''}>${esc(h)}</th>`).join('')}</tr></thead>
+    <tbody>${rows.map(r => `<tr>${r.map((c, i) => `<td${i > 2 ? ' class="r num"' : ''}>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
+    <p class="foot">Buod ito para sa report. Ang <b>TS POSM KPI Grading</b> ay automatic na kumukuha ng deployment status bawat store bawat BU (huling <b>verified</b> lang) mula sa parehong Google Sheet, kaya wala nang kokopyahin. Naka-save din ang buod na ito sa <b>TS_Summary</b> tab.</p></section>`;
+  document.getElementById('copy').onclick = async () => {
+    const tsv = [head].concat(rows).map(r => r.join('\t')).join('\n');
+    try { await navigator.clipboard.writeText(tsv); toast('Nakopya. I-paste sa Sheets o Excel.'); } catch(e) { toast('Hindi makopya sa view na ito. I-select ang table at kopyahin.'); }
+  };
+}
+
+boot();
+
+</script>
+</body></html>
