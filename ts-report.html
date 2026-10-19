@@ -330,7 +330,7 @@ const app = document.getElementById('app');
 async function boot(){
   if (DEMO) {
     S.D = sampleData(); S.M = makeModel(S.D); S.tsList = S.D.ts;
-    if (!S.me || !S.tsList.some(t => t.name === S.me)) S.me = S.tsList[0].name;
+    if (S.me && !S.tsList.some(t => t.name === S.me)) S.me = null;
     return render();
   }
   app.innerHTML = '<div class="phone"><div class="empty">Kinukuha ang stores mo…</div></div>';
@@ -353,12 +353,22 @@ function render(){
 }
 
 function renderPick(){
+  const regions = [...new Set(S.tsList.map(t => t.region || 'Walang region'))].sort();
+  if (!S.pickRegion || !regions.includes(S.pickRegion)) S.pickRegion = '';
+  const names = S.tsList.filter(t => (t.region || 'Walang region') === S.pickRegion).map(t => t.name).sort();
   app.innerHTML = `<div class="phone">
-    <div class="store-h"><h2>Sino ka?</h2><p>Piliin ang pangalan mo. Isang beses lang ito sa phone na ito.</p></div>
-    <label class="field">Trade Supervisor<select id="pick">${S.tsList.map(t => `<option>${esc(t.name)}</option>`).join('')}</select></label>
-    <button class="btn" id="go">Ituloy</button></div>`;
-  document.getElementById('go').onclick = async () => {
-    S.me = document.getElementById('pick').value; lsSet('tsposm-me', S.me);
+    ${DEMO ? `<div class="demo-note"><b>Demo mode:</b> sample data ito.</div>` : ''}
+    <div class="store-h"><h2>Sino ka?</h2><p>Piliin ang region mo, tapos ang pangalan mo. Isang beses lang ito sa phone na ito.</p></div>
+    <label class="field">1. Region<select id="pickReg"><option value="">— Piliin ang region —</option>${regions.map(r => `<option${r === S.pickRegion ? ' selected' : ''}>${esc(r)}</option>`).join('')}</select></label>
+    <label class="field">2. Trade Supervisor<select id="pick" ${S.pickRegion ? '' : 'disabled'}>${S.pickRegion ? `<option value="">— Piliin ang pangalan mo (${names.length}) —</option>` + names.map(n => `<option>${esc(n)}</option>`).join('') : '<option>Piliin muna ang region</option>'}</select></label>
+    <button class="btn" id="go" disabled>Ituloy</button></div>`;
+  const pick = document.getElementById('pick'), go = document.getElementById('go');
+  document.getElementById('pickReg').onchange = e => { S.pickRegion = e.target.value; renderPick(); };
+  pick.onchange = () => { go.disabled = !pick.value; };
+  go.onclick = async () => {
+    if (!pick.value) return;
+    S.me = pick.value; lsSet('tsposm-me', S.me);
+    if (DEMO) return render();
     app.innerHTML = '<div class="phone"><div class="empty">Kinukuha ang stores mo…</div></div>';
     try { await loadMine(); } catch(e) { S.err = e.message; }
     render();
@@ -385,8 +395,8 @@ function renderList(){
   };
   const section = (title, list, kind, emptyText) => (list.length || emptyText) ? `<div class="sect"><span>${title}</span><span class="num">${list.length}</span></div><div class="list">${list.length ? list.map(s => row(s, kind)).join('') : `<div class="empty">${emptyText}</div>`}</div>` : '';
   app.innerHTML = `<div class="phone">
-    ${DEMO ? `<div class="demo-note"><b>Demo mode:</b> sample data ito. Piliin kung sinong TS ang gusto mong subukan.</div>
-      <label class="field">Trade Supervisor (demo)<select id="tspick">${S.tsList.map(t => `<option${t.name === S.me ? ' selected' : ''}>${esc(t.name)}</option>`).join('')}</select></label>` : `<div class="hello"><span>Hi, <b>${esc(S.me)}</b></span><button class="linkbtn" id="notme">Hindi ikaw?</button></div>`}
+    ${DEMO ? `<div class="demo-note"><b>Demo mode:</b> sample data ito.</div>` : ''}
+    ${`<div class="hello"><span>Hi, <b>${esc(S.me)}</b></span><button class="linkbtn" id="notme">Hindi ikaw?</button></div>`}
     <section class="prog" aria-label="Progress ngayong buwan">
       <div class="prog-head"><div class="big num">${rep}<small> / ${n} stores</small></div>${statusPill}</div>
       ${bar(p, CUR_WEEK)}
@@ -397,8 +407,7 @@ function renderList(){
     ${section('Hindi pa nare-report', todo, 'todo', carry.length || redo.length ? '' : 'Lahat ng stores mo na-report na ngayong buwan.')}
     ${section('Na-report na ngayong buwan', done, 'done', 'Wala pa.')}
   </div>`;
-  const tp = document.getElementById('tspick'); if (tp) tp.onchange = e => { S.me = e.target.value; lsSet('tsposm-me', S.me); render(); };
-  const nm = document.getElementById('notme'); if (nm) nm.onclick = () => { S.me = null; lsSet('tsposm-me', ''); render(); };
+  const nm = document.getElementById('notme'); if (nm) nm.onclick = () => { const t = S.tsList.find(x => x.name === S.me); S.pickRegion = t ? t.region : ''; S.me = null; lsSet('tsposm-me', ''); render(); };
   app.querySelectorAll('[data-store]').forEach(b => b.onclick = () => openStore(b.dataset.store));
 }
 
